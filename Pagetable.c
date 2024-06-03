@@ -20,17 +20,16 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn) {
             uint64_t chunck = vpn&(ONES << (9*i)); //we start at bit 0 as we get the PAGE NUMBER so no offset here/
             chunck >>= 9*i;
 
-            if(i && !(ptPointer[chunck] & 1)) { //i.e. no continuation
+            if(i==0) {
+                ptPointer[chunck] = NO_MAPPING;
+            }
+
+            if(!(ptPointer[chunck] & 1)) { //i.e. no continuation
                 return;
             }
 
-            if(i>0) {
-                uint64_t address = (ptPointer[chunck] >> 12) << 12; //zeroing the smallest 12 bits.
-                ptPointer = phys_to_virt(address);
-            }
-            else { //Only in last level we nullify the pointer
-                ptPointer[chunck] = NO_MAPPING;
-            }
+            uint64_t address = (ptPointer[chunck] >> 12) << 12; //zeroing the smallest 12 bits.
+            ptPointer = phys_to_virt(address);
         }
     }
     else {
@@ -38,18 +37,17 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn) {
             uint64_t chunck = vpn&(ONES << (9*i));
             chunck >>= 9*i;
 
+            if(i==0) {
+                ptPointer[chunck] = (ppn * 4096) | 1;
+                break;
+            }
+
             if(!(ptPointer[chunck] & 1)) { //i.e. no continuation
                 uint64_t address = alloc_page_frame(); //New physical address for new pagetable
                 ptPointer[chunck] = (address * 4096) | 1; //| 1 for valid bit
             }
-
-            if(i>0) {
-                uint64_t address = (ptPointer[chunck] >> 12) << 12; //zeroing the smallest 12 bits.
-                ptPointer = phys_to_virt(address);
-            }
-            else { //Only in last level we define the pointer to be the ppn
-                ptPointer[chunck] = ppn;
-            }
+            uint64_t address = (ptPointer[chunck] >> 12) << 12; //zeroing the smallest 12 bits.
+            ptPointer = phys_to_virt(address);
         }
     }
 }
@@ -62,17 +60,21 @@ uint64_t page_table_query(uint64_t pt, uint64_t vpn) {
         uint64_t chunck = vpn&(ONES << (9*i));
         chunck >>= 9*i;
 
-        if(i && !(ptPointer[chunck] & 1)) { //i.e. no continuation
+        if (i==0) {
+            if(ptPointer[chunck]==NO_MAPPING) {
+                result = NO_MAPPING;
+            }
+            else {
+                result = ptPointer[chunck]&1 ? ptPointer[chunck] >> 12 : NO_MAPPING;
+            }
             break;
         }
 
-        if(i>0) {
-            uint64_t address = (ptPointer[chunck] >> 12) << 12; //zeroing the smallest 12 bits.
-            ptPointer = phys_to_virt(address);
+        if(!(ptPointer[chunck] & 1)) { //i.e. no continuation
+            break;
         }
-        else {
-            result = ptPointer[chunck];
-        }
+        uint64_t address = (ptPointer[chunck] >> 12) << 12; //zeroing the smallest 12 bits.
+        ptPointer = phys_to_virt(address);
     }
     return result;
 }
