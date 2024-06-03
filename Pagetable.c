@@ -17,10 +17,10 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn) {
 
     if(ppn == NO_MAPPING) {
         for(int i = 4; i >= 0; i--) {
-            uint64_t chunck = vpn&(ONES << (9*i));
+            uint64_t chunck = vpn&(ONES << (9*i)); //we start at bit 0 as we get the PAGE NUMBER so no offset here/
             chunck >>= 9*i;
 
-            if(!(ptPointer[chunck] & 1)) { //i.e. no continuation
+            if(i && !(ptPointer[chunck] & 1)) { //i.e. no continuation
                 return;
             }
 
@@ -40,7 +40,7 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn) {
 
             if(!(ptPointer[chunck] & 1)) { //i.e. no continuation
                 uint64_t address = alloc_page_frame(); //New physical address for new pagetable
-                ptPointer[chunck] = (address * 4096) | 1;
+                ptPointer[chunck] = (address * 4096) | 1; //| 1 for valid bit
             }
 
             if(i>0) {
@@ -62,7 +62,7 @@ uint64_t page_table_query(uint64_t pt, uint64_t vpn) {
         uint64_t chunck = vpn&(ONES << (9*i));
         chunck >>= 9*i;
 
-        if(!(ptPointer[chunck] & 1)) { //i.e. no continuation
+        if(i && !(ptPointer[chunck] & 1)) { //i.e. no continuation
             break;
         }
 
