@@ -11,14 +11,14 @@ int elementFinder(char** ptr, char* target) { //Maybe sz needs to be count-1
     int timer = 0;
     int result = -1;
     while(*curr != NULL) {
-        if(strcmp(*curr,target)) {
+        if(strcmp(*curr,target) == 0) {
             result = timer;
             break;
         }
         curr++;
         timer++;
     }
-    free(curr);
+    //free(curr);
     return result;
 }
 
@@ -48,6 +48,7 @@ int singleCommand(int count, char** arglist,int bgState) { //bgState = 1 - we wa
 int pipedCommand(int count, char** arglist,int bgState, int pipeIdx) {
     // Child 1 | Child 2
     int pipefd[2];
+    pipe(pipefd);
     pid_t cpid1 = fork();
     if(cpid1 != 0) { //i.e. parent
         close(pipefd[1]);
@@ -80,7 +81,6 @@ int pipedCommand(int count, char** arglist,int bgState, int pipeIdx) {
         close(pipefd[0]);
         dup2(pipefd[1],1);
         arglist[pipeIdx] = NULL;
-
         if(execvp(arglist[0],arglist) == -1) {
             //ERROR ERROR ERROR
             //Couldn't run the program
@@ -90,6 +90,7 @@ int pipedCommand(int count, char** arglist,int bgState, int pipeIdx) {
 }
 
 int redirectCommand() {
+
     return 0;
 }
 
@@ -99,7 +100,7 @@ int process_arglist(int count, char** arglist) {
     if(idx >= 0) {
         flagPipe = idx;
     }
-    int flagWait = !strcmp(arglist[count-1],"&");
+    int flagWait = !(strcmp(arglist[count-1],"&")==0);
 
     if(flagPipe) {
         pipedCommand(count,arglist,1,flagPipe);
@@ -109,7 +110,7 @@ int process_arglist(int count, char** arglist) {
         int cntCmd = count;
         if(!flagWait) {
             passed = malloc((count-1)*sizeof(char*));
-            for(int i = 0; i < count-2; i++) {
+            for(int i = 0; i < count-1; i++) {
                 passed[i] = arglist[i];
             }
             passed[count-1] = arglist[count];
@@ -120,7 +121,9 @@ int process_arglist(int count, char** arglist) {
         }
 
         singleCommand(cntCmd,passed,flagWait);
-        free(passed);
+        if(!flagWait) {
+            free(passed);
+        }
     }
 
     return 1;
