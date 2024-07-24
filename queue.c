@@ -73,9 +73,9 @@ void initQueue() {
 
 void enqueue(void* data) {
     mtx_lock(&queueLock);
-    printf("Task now\n");
-    printf("Number of waiting threads : %d\n",dqConut);
-    printf("Number of elements in tasks : %d\n",tasks->sz);
+    //printf("Task now\n");
+    //printf("Number of waiting threads : %d\n",dqConut);
+    //printf("Number of elements in tasks : %d\n",tasks->sz);
     struct Node* element = (struct Node*)calloc(sizeof(struct Node),1);
     element->item = data;
     element->nxt = NULL;
@@ -83,10 +83,10 @@ void enqueue(void* data) {
     tasks->sz++;
     if(cvList->head != NULL) {
         if(cvList->head->numOfWaits == 0) {
-            printf("HUGE L \n");
+            //printf("HUGE L \n");
             exit(1);
         }
-        printf("Number of waiters at first cv : %d\n", cvList->head->numOfWaits);
+        //("Number of waiters at first cv : %d\n", cvList->head->numOfWaits);
         cnd_signal(&cvList->head->cv);
     }
     mtx_unlock(&queueLock);
@@ -94,9 +94,9 @@ void enqueue(void* data) {
 
 void* dequeue() {
     mtx_lock(&queueLock);
-    printf("Thread now\n");
-    printf("Number of waiting threads : %d\n",dqConut);
-    printf("Number of elements in tasks : %d\n",tasks->sz);
+    //printf("Thread now\n");
+    //printf("Number of waiting threads : %d\n",dqConut);
+    //printf("Number of elements in tasks : %d\n",tasks->sz);
     if(tasks->sz - dqConut <= 0) { //aka we wait for new task.
         cnd_t cv;
         cnd_init(&cv);
@@ -113,17 +113,22 @@ void* dequeue() {
     if(dqConut > 1 || tasks->sz == 0) {
         curr->numOfWaits++;
         cnd_wait(&cvList->tail->cv,&queueLock);
-        printf("Sanity Sanity Sanity\n");
+        //printf("Sanity Sanity Sanity\n");
         curr->numOfWaits--;
     }
 
     void* result = pop(tasks);
     tasks->sz--;
     dqConut--;
-    printf("Tasks' size : %d , dqCount : %d\n",tasks->sz,dqConut);
-    if(tasks->sz > 0 && dqConut > 0 && curr->nxt != NULL) { //aka somebody is sleeping and waiting for us
-        printf("Mood Mood Mood Mood Mood Mood\n");
-        cnd_signal(&curr->nxt->cv);
+    //printf("Tasks' size : %d , dqCount : %d\n",tasks->sz,dqConut);
+    if(tasks->sz > 0 && dqConut > 0) { //aka somebody is sleeping and waiting for us
+        if(curr->numOfWaits > 0) {
+            cnd_signal(&curr->cv);
+        }
+        else {
+            cnd_signal(&curr->nxt->cv);
+        }
+        //printf("Mood Mood Mood Mood Mood Mood\n");
     }
     if(cvList->head != NULL && cvList->head->numOfWaits == 0) {
         //printf("Number of waiters : %d\n", cvList->head->numOfWaits);
@@ -563,8 +568,8 @@ void test_random_operations() {
 }
 
 int main() {
-    stress_test();
-    /*test_basic_functionality();
+    //stress_test();
+    test_basic_functionality();
     test_edge_cases();
     test_concurrency();
     test_visited_count();
@@ -572,6 +577,6 @@ int main() {
     test_fifo_order();
     test_multiple_threads();
     test_large_data();
-    test_random_operations();*/
-    //test_thread_wakeup_order();
+    test_random_operations();
+    test_thread_wakeup_order();
 }
