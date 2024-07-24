@@ -49,12 +49,9 @@ void initQueue() {
     mtx_init(&queueLock, mtx_plain);
     cvList = (struct lnkList*)calloc(sizeof(struct lnkList),1);
     cvList->sentinel = (struct Node*)calloc(sizeof(struct Node),1);
-    //cvList->head = cvList->sentinel;
-    //cvList->tail = cvList->sentinel;
     tasks = (struct lnkList*)calloc(sizeof(struct lnkList),1);
     tasks->sentinel = (struct Node*)calloc(sizeof(struct Node),1);
-    //tasks->head = tasks->sentinel;
-    //tasks->tail = tasks->sentinel;
+
     dqConut = 0;
     done = 0;
 }
@@ -91,7 +88,7 @@ void* dequeue(void) {
     void* result = pop(tasks);
     tasks->sz--;
     dqConut--;
-    if(tasks->sz > 0 && dqConut > 0) { //aka somebody is sleeping and waiting for us
+    if(tasks->sz > 0 && dqConut > 0 && curr->nxt != NULL) { //aka somebody is sleeping and waiting for us
         cnd_signal(&curr->nxt->cv);
     }
     if(curr != NULL) {
@@ -117,7 +114,7 @@ bool tryDequeue(void **val) {
     void* result = pop(tasks);
     tasks->sz--;
     dqConut--;
-    if (tasks->sz > 0 && dqConut > 0) {
+    if (tasks->sz > 0 && dqConut > 0 && cvList->head != NULL) {
         cnd_signal(&cvList->head->cv);
     }
     mtx_unlock(&queueLock);
@@ -134,6 +131,7 @@ void destroyQueue() {
         last = curr;
         curr = last ? last->nxt : NULL;
     }
+    free(tasks->sentinel);
     free(tasks);
 
     last = cvList->head;
@@ -144,6 +142,7 @@ void destroyQueue() {
         last = curr;
         curr = last ? last->nxt : NULL;
     }
+    free(cvList->sentinel);
     free(cvList);
 
     mtx_destroy(&queueLock);
