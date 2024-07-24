@@ -2,6 +2,12 @@
 #include "queue.h"
 #include <stdlib.h>
 #include <stdatomic.h>
+#include <stdio.h>
+#include <assert.h>
+
+void print_result(const char *test_name, bool result) {
+    printf("%s: %s\n", test_name, result ? "PASSED" : "FAILED");
+}
 
 struct Node {
     void* item;
@@ -14,7 +20,7 @@ struct lnkList {
     struct Node* sentinel;
     struct Node* head;
     struct Node* tail;
-    size_t sz;
+    int sz; //
 };
 
 void add(struct lnkList* lst, struct Node* vertex) {
@@ -74,7 +80,7 @@ void enqueue(void* data) {
     mtx_unlock(&queueLock);
 }
 
-void* dequeue(void) {
+void* dequeue() {
     mtx_lock(&queueLock);
     if(tasks->sz - dqConut <= 0) { //aka we wait for new task.
         cnd_t cv;
@@ -83,11 +89,13 @@ void* dequeue(void) {
         element->cv = cv;
         element->nxt = NULL;
         add(cvList,element);
+        //printf("%d addding himself to cvList\n",id);
     }
     dqConut++;
     struct Node* curr = cvList->tail;
     if(dqConut > 1 || tasks->sz == 0) {
         cnd_wait(&cvList->tail->cv,&queueLock);
+        //printf("%d enqueues\n",id);
     }
     //struct Node* curr = cvList->head;
     void* result = pop(tasks);
