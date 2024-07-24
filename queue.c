@@ -94,39 +94,31 @@ void* dequeue(void) {
     if(tasks->sz > 0 && dqConut > 0) { //aka somebody is sleeping and waiting for us
         cnd_signal(&curr->nxt->cv);
     }
+    if(curr != NULL) {
+        cnd_destroy(&curr->cv);
+        pop(cvList);
+    }
+
+
     mtx_unlock(&queueLock);
     done++;
     return result;
-    //WARNING WARNING WARNING - now that we've unlocked another thread may print before us even if we were first.*/
 }
 
-bool tryDequeue(void ** val) {
-    if(mtx_trylock(&queueLock) != thrd_success) {
+bool tryDequeue(void **val) {
+    if (mtx_trylock(&queueLock) != thrd_success) {
         return false;
     }
-    if(tasks->sz - dqConut <= 0) {
+    if (tasks->sz - dqConut <= 0) {
         mtx_unlock(&queueLock);
         return false;
     }
-    if(tasks->sz - dqConut <= 0) { //aka we wait for new task.
-        cnd_t cv;
-        cnd_init(&cv);
-        struct Node* element = (struct Node*)calloc(sizeof(struct Node),1);
-        element->cv = cv;
-        element->nxt = NULL;
-        add(cvList,element);
-        //cvList->sz++;
-    }
     dqConut++;
-    struct Node* curr = cvList->tail;
-    if(dqConut > 1 || tasks->sz == 0) {
-        cnd_wait(&cvList->tail->cv,&queueLock);
-    }
     void* result = pop(tasks);
     tasks->sz--;
     dqConut--;
-    if(tasks->sz > 0 && dqConut > 0) { //aka somebody is sleeping and waiting for us
-        cnd_signal(&curr->nxt->cv);
+    if (tasks->sz > 0 && dqConut > 0) {
+        cnd_signal(&cvList->head->cv);
     }
     mtx_unlock(&queueLock);
     done++;
@@ -135,21 +127,25 @@ bool tryDequeue(void ** val) {
 }
 
 void destroyQueue() {
-    struct Node* last = tasks->sentinel;
-    struct Node* curr = last->nxt;
+    struct Node* last = tasks->head;
+    struct Node* curr = last ? last->nxt : NULL;
     while(last != NULL) {
         free(last);
         last = curr;
+        curr = last ? last->nxt : NULL;
     }
     free(tasks);
-    last = cvList->sentinel;
-    curr = last->nxt;
+
+    last = cvList->head;
+    curr = last ? last->nxt : NULL;
     while(last != NULL) {
         cnd_destroy(&last->cv);
         free(last);
         last = curr;
+        curr = last ? last->nxt : NULL;
     }
     free(cvList);
+
     mtx_destroy(&queueLock);
 }
 
