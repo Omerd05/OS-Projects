@@ -19,7 +19,8 @@ struct lnkList {
 
 void add(struct lnkList* lst, struct Node* vertex) {
     if(lst->head == NULL) {
-        lst->tail = lst->head = vertex;
+        lst->head = vertex;
+        lst->tail = vertex;
     }
     else {
         lst->tail->nxt = vertex;
@@ -27,6 +28,9 @@ void add(struct lnkList* lst, struct Node* vertex) {
     }
 }
 void* pop(struct lnkList* lst) {
+    if(lst->head == NULL) {
+        return NULL;
+    }
     void* result = lst->head->item;
     struct Node* tmp = lst->head;
     lst->head = tmp->nxt;
@@ -34,6 +38,7 @@ void* pop(struct lnkList* lst) {
     if(lst->head == NULL) {
         lst->tail = NULL;
     }
+    lst->sentinel->nxt = lst->head;
     return result;
 }
 
@@ -78,13 +83,13 @@ void* dequeue(void) {
         element->cv = cv;
         element->nxt = NULL;
         add(cvList,element);
-        //cvList->sz++;
     }
     dqConut++;
     struct Node* curr = cvList->tail;
     if(dqConut > 1 || tasks->sz == 0) {
         cnd_wait(&cvList->tail->cv,&queueLock);
     }
+    //struct Node* curr = cvList->head;
     void* result = pop(tasks);
     tasks->sz--;
     dqConut--;
@@ -95,7 +100,6 @@ void* dequeue(void) {
         cnd_destroy(&curr->cv);
         pop(cvList);
     }
-
 
     mtx_unlock(&queueLock);
     done++;
@@ -131,7 +135,9 @@ void destroyQueue() {
         last = curr;
         curr = last ? last->nxt : NULL;
     }
-    free(tasks->sentinel);
+    if(tasks != NULL) {
+        free(tasks->sentinel);
+    }
     free(tasks);
 
     last = cvList->head;
