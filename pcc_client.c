@@ -43,11 +43,17 @@ int main(int argc, char* argv[]) {
     u_int32_t N = file_stat.st_size;
     long leftover = N;
     N = htonl(N);
-    long ones = pow(2,8) - 1;
 
-    for(int i = 0; i < 4; i++) {
-        char currByte = N & (ones << 8*i);
-        write(sockfd,&currByte,sizeof(currByte));
+    ssize_t bytes_sent = 0;
+    ssize_t total_bytes = sizeof(N);
+
+    while (bytes_sent < total_bytes) {
+        ssize_t result = write(sockfd, ((char*)&N) + bytes_sent, total_bytes - bytes_sent);
+        if (result < 0) {
+            perror("\n Error regarding file's size sending ");
+            exit(1);
+        }
+        bytes_sent += result;
     }
 
     while(leftover > 0) {
@@ -56,18 +62,19 @@ int main(int argc, char* argv[]) {
         leftover -= nwrite;
     }
 
-    char input[50] = {0};
-    char* tmp = input;
-    while(u_int32_t nread = read(sockfd,tmp,sizeof(tmp)) > 0) {
-        for(int i = 0; i < nread; i++) {
-            tmp[i] = ntohl(tmp[i]);
+    u_int32_t result;
+    ssize_t bytes_received = 0;
+    total_bytes = sizeof(result);
+
+    while (bytes_received < total_bytes) {
+        ssize_t nread = read(sockfd, ((char*)&result) + bytes_received, total_bytes - bytes_received);
+        if (nread < 0) {
+            perror("An error receiving result occured");
+            exit(1);
         }
-        tmp += nread;
+        bytes_received += nread;
     }
-    u_int32_t result = 0;
-    for(int i = 0; i < (tmp - input); i++) {
-        result |= input[i] << 8*i;
-    }
-    printf("# of printable characters: %u\n",result);
-    return 0;
+
+    result = ntohl(result);
+    printf("# of printable characters: %u\n", result);
 }
