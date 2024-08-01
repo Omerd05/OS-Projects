@@ -32,10 +32,13 @@ int main(int argc, char* argv[]) {
     int sockfd = socket(AF_INET,SOCK_STREAM,0);
     if(bind(sockfd,(struct sockaddr*)&client,addrsize) != 0) {
         perror("\n Error due binding failiure.");
+        close(fd);
         exit(1);
     }
     if(connect(sockfd,(struct sockaddr*)&server,addrsize) != 0) {
         perror("\n Error due connecting failiure.");
+        close(sockfd);
+        close(fd);
         exit(1);
     }
     char buffer[1024] = {0};
@@ -51,6 +54,8 @@ int main(int argc, char* argv[]) {
         ssize_t result = write(sockfd, ((char*)&N) + bytes_sent, total_bytes - bytes_sent);
         if (result < 0) {
             perror("\n Error regarding file's size sending ");
+            close(sockfd);
+            close(fd);
             exit(1);
         }
         bytes_sent += result;
@@ -70,6 +75,8 @@ int main(int argc, char* argv[]) {
         ssize_t nread = read(sockfd, ((char*)&result) + bytes_received, total_bytes - bytes_received);
         if (nread < 0) {
             perror("An error receiving result occured");
+            close(sockfd);
+            close(fd);
             exit(1);
         }
         bytes_received += nread;
